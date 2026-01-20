@@ -78,3 +78,69 @@ def largest_cluster_fraction(positions, eps, box_size):
 
     largest = max(len(c) for c in clusters)
     return largest / N
+
+
+def density_variance_grid(positions: np.ndarray, box_size: float, bins: int = 20, normalized: bool = True) -> float:
+    H, _, _ = np.histogram2d(
+        positions[:, 0], positions[:, 1],
+        bins=bins,
+        range=[[0, box_size], [0, box_size]],
+    )
+    mean = np.mean(H)
+    var = np.var(H)
+    if normalized:
+        return var / (mean**2 + 1e-12)
+    return float(var)
+
+def number_of_clusters(positions: np.ndarray, eps: float, box_size: float, min_size: int = 1) -> int:
+    """
+    Count number of clusters under a simple distance-threshold connectivity rule (PBC).
+
+    Two particles are connected if their distance (under periodic BC) is < eps.
+    A cluster is a connected component in this graph.
+
+    Parameters
+    ----------
+    positions : np.ndarray, shape (N, 2)
+    eps : float
+        Neighbour threshold distance.
+    box_size : float
+    min_size : int
+        Only count clusters with size >= min_size (useful to ignore singletons).
+
+    Returns
+    -------
+    int
+        Number of clusters.
+    """
+    N = positions.shape[0]
+    visited = np.zeros(N, dtype=bool)
+    n_clusters = 0
+
+    for i in range(N):
+        if visited[i]:
+            continue
+
+        stack = [i]
+        cluster_size = 0
+
+        while stack:
+            j = stack.pop()
+            if visited[j]:
+                continue
+            visited[j] = True
+            cluster_size += 1
+
+            diff = positions - positions[j]
+            diff -= box_size * np.round(diff / box_size)
+            dists = np.linalg.norm(diff, axis=1)
+
+            neighbors = np.where(dists < eps)[0]
+            for n in neighbors:
+                if not visited[n]:
+                    stack.append(n)
+
+        if cluster_size >= min_size:
+            n_clusters += 1
+
+    return n_clusters
