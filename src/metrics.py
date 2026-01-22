@@ -214,6 +214,7 @@ def polarization_time_avg(positions, box_size=1.0, K=50):
     return float(np.mean(phis))
 
 def global_density(positions, box_size):
+    """Measures overall density"""
     N = positions.shape[1]
     area = box_size * box_size
     return N / area
