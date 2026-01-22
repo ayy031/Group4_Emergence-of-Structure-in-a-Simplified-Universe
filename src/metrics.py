@@ -109,10 +109,10 @@ def density_variance_grid(positions: np.ndarray, box_size: float, bins: int = 20
     if positions.size == 0:
         return float("nan")
     
-    H, _, _ = np.histogramdd(
-        positions,
-        bins=[bins] * positions.shape[1],
-        range=[[0, box_size]] * positions.shape[1],
+    H, _, _ = np.histogram2d(
+        positions[:, 0], positions[:, 1],
+        bins=bins,
+        range=[[0, box_size], [0, box_size]],
     )
     mean = np.mean(H)
     var = np.var(H)
@@ -174,3 +174,77 @@ def number_of_clusters(positions: np.ndarray, eps: float, box_size: float, min_s
             n_clusters += 1
 
     return n_clusters
+
+
+def polarization_time_avg(positions, box_size=1.0, K=50):
+    """
+    Polarization measures how aligned the agents are in their direction of motion.
+
+    - Polarization ≈ 0 → motion is random, no collective order
+    - Polarization ≈ 1 → motion is highly aligned, strong flocking
+    
+    Polarization is the standard order parameter for Vicsek-type flocking models.
+
+    Mathematically, polarization is the average of all unit vectors.
+
+    Parameters
+    ----------
+    positions : np.ndarray, shape (N, 2)
+    box_size : float
+    K: int
+        Number of timesteps to average order parameter.
+
+    Returns
+    -------
+    float
+        Level of order between 0 and 1
+
+    """
+    T = positions.shape[0] # number of steps
+    phis = []
+    for t in range(T-K+1, T):
+        v = positions[t] - positions[t-1] # estimate velocity by subtracting previous positions
+        v -= box_size * np.round(v / box_size)  # periodic boundary correction
+
+        vhat = v / (np.linalg.norm(v, axis=1, keepdims=True) + 1e-12) # normalize velocity
+
+        phi = np.linalg.norm(np.sum(vhat, axis=0)) / vhat.shape[0] # compute polarization
+        phis.append(phi)
+
+    return float(np.mean(phis))
+
+def global_density(positions, box_size):
+    """Measures overall density"""
+    N = positions.shape[1]
+    area = box_size * box_size
+    return N / area
+
+
+def local_density(positions, r, box_size, K=50):
+    """
+    This measures how crowded the flock is around each agent, then averages.
+    """
+    T, N, _ = positions.shape
+    densities = []
+
+    for t in range(T-K+1, T):
+        pos = positions[t]
+
+        # pairwise displacement
+        diff = pos[:, None, :] - pos[None, :, :]
+        diff -= box_size * np.round(diff / box_size)
+        dist = np.linalg.norm(diff, axis=2)
+
+        # count neighbours within r (exclude self)
+        neigh = (dist > 0) & (dist < r)
+        counts = np.sum(neigh, axis=1)
+
+        # density = neighbours / area of circle
+        rho = counts / (np.pi * r * r)
+
+        densities.append(np.mean(rho))
+
+    return float(np.mean(densities))
+
+
+
