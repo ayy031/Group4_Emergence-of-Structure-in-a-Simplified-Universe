@@ -12,6 +12,7 @@ def run_simulation(
     repulsion_radius=0.05,
     repulsion_strength=1.0,
     
+    use_predator=False,
     predator_strength=5.0,         
     #defaults to 3*R
     predator_radius=None,
@@ -36,14 +37,15 @@ def run_simulation(
     vel = vel / (np.linalg.norm(vel, axis=1, keepdims=True) + 1e-12)
 
     # predator setup 
-    if predator_radius is None:
-        predator_radius = 3.0 * R
-    if predator_speed is None:
-        predator_speed = 1.0 * speed
+    if use_predator:
+        if predator_radius is None:
+            predator_radius = 3.0 * R
+        if predator_speed is None:
+            predator_speed = 1.0 * speed
 
-    pred_pos = rng.random(3) * box_size
-    pred_vel = rng.normal(size=3)
-    pred_vel = pred_vel / (np.linalg.norm(pred_vel) + 1e-12)
+        pred_pos = rng.random(3) * box_size
+        pred_vel = rng.normal(size=3)
+        pred_vel = pred_vel / (np.linalg.norm(pred_vel) + 1e-12)
 
     history = []
 
@@ -79,7 +81,7 @@ def run_simulation(
 
         # predator avoidance 
         F_pred = np.zeros_like(pos)
-        if predator_strength != 0.0:
+        if use_predator:
             dp = pos - pred_pos[None, :]
             dp -= box_size * np.round(dp / box_size)
             d = np.linalg.norm(dp, axis=1)
