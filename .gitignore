@@ -2,13 +2,13 @@
 __pycache__/
 *.pyc
 
-# figures/
+figures/
 results/
 *.gif
 *.mp4
 .ipynb_checkpoints/
 
-# figures/
+figures/
 results/
 *.gif
 *.mp4
